@@ -57,6 +57,7 @@ public class QuestionController {
     @GetMapping("/get/vo")
     @Operation(summary = "查询single问题")
     public BaseResponse<QuestionVO> getQuestionVOById(long id, HttpServletRequest request) {
+        // 过滤非法id
         if (id <= 0) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }

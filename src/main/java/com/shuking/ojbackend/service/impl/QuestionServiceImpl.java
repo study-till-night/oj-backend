@@ -25,6 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * @author HP
@@ -83,39 +86,33 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
      *
      * @return wrapper
      */
-    @Override
-    public Wrapper<Question> getQueryWrapper(QuestionQueryRequest questionQueryRequest) {
-        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
 
-        Long id = questionQueryRequest.getId();
-        String title = questionQueryRequest.getTitle();
-        String content = questionQueryRequest.getContent();
-        List<String> tags = questionQueryRequest.getTags();
-        Long userId = questionQueryRequest.getUserId();
-        String sortField = questionQueryRequest.getSortField();
-        String sortOrder = questionQueryRequest.getSortOrder();
-
-        QueryWrapper<Question> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq(id != null, "id", id);
-        queryWrapper.eq(userId != null, "userId", userId);
-        queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
-        queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
-        // 对标签字段进行模糊匹配
-        if (!CollectionUtils.isEmpty(tags)) {
-            for (String tag : tags) {
-                // 对json字符串进行转移化匹配
-                queryWrapper.like("tags", "\"" + tag + "\"");
-            }
-        }
-        // 设置排序规则
-        queryWrapper.orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
-                sortField);
-        return queryWrapper;
-    }
 
     @Override
     public Page<QuestionVO> getQuestionVOPage(Page<Question> questionPage, HttpServletRequest request) {
-        return null;
+        List<Question> questionList = questionPage.getRecords();
+        Page<QuestionVO> questionVOPage = new Page<>(questionPage.getCurrent(), questionPage.getSize(), questionPage.getTotal());
+        if (CollectionUtils.isEmpty(questionList)) {
+            return questionVOPage;
+        }
+        // 1. 关联查询用户信息
+        Set<Long> userIdSet = questionList.stream().map(Question::getUserId).collect(Collectors.toSet());
+        // 使用listByIds批量查询能够减少数据库多次连接的IO耗时
+        Map<Long, List<User>> userIdUserListMap = userService.listByIds(userIdSet).stream()
+                .collect(Collectors.groupingBy(User::getId));
+        // 填充信息
+        List<QuestionVO> questionVOList = questionList.stream().map(question -> {
+            QuestionVO questionVO = QuestionVO.objToVo(question);
+            Long userId = question.getUserId();
+            User user = null;
+            if (userIdUserListMap.containsKey(userId)) {
+                user = userIdUserListMap.get(userId).get(0);
+            }
+            questionVO.setUserVO(userService.getUserVO(user));
+            return questionVO;
+        }).collect(Collectors.toList());
+        questionVOPage.setRecords(questionVOList);
+        return questionVOPage;
     }
 
     /**
@@ -174,36 +171,72 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
      */
     @Override
     public boolean updateQuestion(QuestionEditRequest questionEditRequest, HttpServletRequest request) {
+        long id = questionEditRequest.getId();
+        // 判断是否存在
+        Question oldQuestion = this.getById(id);
+        ThrowUtils.throwIf(oldQuestion == null, ErrorCode.NOT_FOUND_ERROR);
+
         Question question = new Question();
         BeanUtils.copyProperties(questionEditRequest, question);
 
         List<String> tags = questionEditRequest.getTags();
         List<JudgeCase> judgeCase = questionEditRequest.getJudgeCase();
         JudgeConfig judgeConfig = questionEditRequest.getJudgeConfig();
-
+        // 对象转换为json字符串
         objFieldToJson(question, tags, judgeConfig, judgeCase);
 
         // 参数校验
         this.validQuestion(question, false);
         User loginUser = userService.getLoginUser(request);
-        long id = questionEditRequest.getId();
-        // 判断是否存在
-        Question oldQuestion = this.getById(id);
-        ThrowUtils.throwIf(oldQuestion == null, ErrorCode.NOT_FOUND_ERROR);
+
         // 仅本人可编辑
         if (!oldQuestion.getUserId().equals(loginUser.getId())) {
             throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
         }
         return true;
     }
+    /**
+     * 根据请求对象获取QueryWrapper对象
+     *
+     * @return wrapper
+     */
+    @Override
+    public Wrapper<Question> getQueryWrapper(QuestionQueryRequest questionQueryRequest) {
+        ThrowUtils.throwIf(questionQueryRequest == null, ErrorCode.PARAMS_ERROR);
+
+        Long id = questionQueryRequest.getId();
+        String title = questionQueryRequest.getTitle();
+        String content = questionQueryRequest.getContent();
+        List<String> tags = questionQueryRequest.getTags();
+        Long userId = questionQueryRequest.getUserId();
+        String sortField = questionQueryRequest.getSortField();
+        String sortOrder = questionQueryRequest.getSortOrder();
+
+        QueryWrapper<Question> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq(id != null, "id", id);
+        queryWrapper.eq(userId != null, "userId", userId);
+        queryWrapper.like(StringUtils.isNotBlank(title), "title", title);
+        queryWrapper.like(StringUtils.isNotBlank(content), "content", content);
+        // 对标签字段进行模糊匹配
+        if (!CollectionUtils.isEmpty(tags)) {
+            for (String tag : tags) {
+                // 对json字符串进行转移化匹配
+                queryWrapper.like("tags", "\"" + tag + "\"");
+            }
+        }
+        // 设置排序规则
+        queryWrapper.orderBy(SqlUtils.validSortField(sortField), sortOrder.equals(CommonConstant.SORT_ORDER_ASC),
+                sortField);
+        return queryWrapper;
+    }
 
     /**
      * 将对象字段转为json字符串
      *
-     * @param question
-     * @param tags
-     * @param judgeConfig
-     * @param judgeCase
+     * @param question  带修改的问题
+     * @param tags  标签
+     * @param judgeConfig   时空间要求
+     * @param judgeCase 用例
      */
     private void objFieldToJson(Question question, List<String> tags, JudgeConfig judgeConfig, List<JudgeCase> judgeCase) {
         // 判断标签
@@ -219,5 +252,6 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question>
                 && judgeConfig.getTimeLimit() != null && judgeConfig.getStackLimit() != null)
             question.setJudgeConfig(GSON.toJson(judgeConfig));
         else throw new BusinessException(ErrorCode.SYSTEM_ERROR, "时空间要求不得为空!");
+
     }
 }
