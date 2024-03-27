@@ -1,4 +1,4 @@
-package com.shuking.ojbackend.judge.model;
+package com.shuking.ojbackend.judge.codesandbox.model;
 
 import lombok.Data;
 

@@ -8,6 +8,7 @@ import com.shuking.ojbackend.common.ErrorCode;
 import com.shuking.ojbackend.constant.CommonConstant;
 import com.shuking.ojbackend.exception.BusinessException;
 import com.shuking.ojbackend.exception.ThrowUtils;
+import com.shuking.ojbackend.judge.JudgeServiceImpl;
 import com.shuking.ojbackend.mapper.QuestionSubmitMapper;
 import com.shuking.ojbackend.model.dto.questionsubmit.QuestionSubmitAddRequest;
 import com.shuking.ojbackend.model.dto.questionsubmit.QuestionSubmitQueryRequest;
@@ -26,16 +27,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
  * @author HP
- * @description 针对表【question_submit(题目提交)】的数据库操作Service实现
- * @createDate 2024-03-25 14:51:38
+ * &#064;description  针对表【question_submit(题目提交)】的数据库操作Service实现
+ * &#064;createDate  2024-03-25 14:51:38
  */
 @Service
 public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper, QuestionSubmit>
@@ -46,6 +49,10 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
 
     @Resource
     private QuestionService questionService;
+
+    @Resource
+    @Lazy   //  应对循环Bean依赖
+    private JudgeServiceImpl judgeService;
 
     /**
      * 提交做题记录
@@ -76,6 +83,11 @@ public class QuestionSubmitServiceImpl extends ServiceImpl<QuestionSubmitMapper,
 
         boolean saveRes = this.save(newSubmit);
         ThrowUtils.throwIf(!saveRes, ErrorCode.SYSTEM_ERROR, "数据库提交做题记录失败");
+
+        // 异步执行判题操作
+        CompletableFuture.runAsync(()->{
+            judgeService.doJudge(newSubmit.getId());
+        });
         return newSubmit.getId();
     }
 

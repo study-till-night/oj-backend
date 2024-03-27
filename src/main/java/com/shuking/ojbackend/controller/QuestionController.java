@@ -51,8 +51,8 @@ public class QuestionController {
     /**
      * 根据 id 获取
      *
-     * @param id
-     * @return
+     * @param id    问题id
+     * @return  脱敏后问题对象
      */
     @GetMapping("/get/vo")
     @Operation(summary = "查询single问题")
@@ -71,9 +71,8 @@ public class QuestionController {
     /**
      * 分页获取列表（封装类）
      *
-     * @param questionQueryRequest
-     * @param request
-     * @return
+     * @param questionQueryRequest  dto
+     * @param request   http
      */
     @PostMapping("/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
@@ -90,9 +89,8 @@ public class QuestionController {
     /**
      * 分页获取当前用户创建的资源列表
      *
-     * @param questionQueryRequest
-     * @param request
-     * @return
+     * @param questionQueryRequest  dto
+     * @param request   http
      */
     @PostMapping("/my/list/page/vo")
     public BaseResponse<Page<QuestionVO>> listMyQuestionVOByPage(@RequestBody QuestionQueryRequest questionQueryRequest,
@@ -116,9 +114,8 @@ public class QuestionController {
     /**
      * 编辑（用户）
      *
-     * @param questionEditRequest
-     * @param request
-     * @return
+     * @param questionEditRequest   dto
+     * @param request   http
      */
     @PostMapping("/edit")
     @Operation(summary = "编辑问题")

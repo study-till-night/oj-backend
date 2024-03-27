@@ -1,17 +1,18 @@
 package com.shuking.ojbackend.model.vo;
 
 import cn.hutool.json.JSONUtil;
-import com.shuking.ojbackend.judge.model.JudgeInfo;
+import com.shuking.ojbackend.judge.codesandbox.model.JudgeInfo;
 import com.shuking.ojbackend.model.entity.QuestionSubmit;
 import lombok.Data;
 import org.springframework.beans.BeanUtils;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
 
 /**
  * 题目提交封装类
- * @TableName question
+ * &#064;TableName  question
  */
 @Data
 public class QuestionSubmitVO implements Serializable {
@@ -103,8 +104,10 @@ public class QuestionSubmitVO implements Serializable {
         BeanUtils.copyProperties(questionSubmit, questionSubmitVO);
         String judgeInfoStr = questionSubmit.getJudgeInfo();
         questionSubmitVO.setJudgeInfo(JSONUtil.toBean(judgeInfoStr, JudgeInfo.class));
+        // todo    添加userVo成员
         return questionSubmitVO;
     }
 
+    @Serial
     private static final long serialVersionUID = 1L;
 }
