@@ -21,4 +21,5 @@ mybatis-plus:
 
 #自定义代码沙箱类型
 codesandbox:
+  #  共三种 ExampleSandBox  remoteSandBox ThirdPartySandBoxImpl
   type: remoteSandBox

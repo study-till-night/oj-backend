@@ -77,6 +77,7 @@ public class JudgeServiceImpl implements JudgeService {
                 .judgeInfo(judgeInfo).judgeCaseList(caseList)
                 .inputList(inputList).outputList(outputList)
                 .questionSubmit(submit).question(question).build();
+
         // 得到执行结果 是AC还是WA还是TLE...
         JudgeManager judgeManager = new JudgeManager();
         JudgeInfo judgeRes = judgeManager.doJudge(judgeContext);
