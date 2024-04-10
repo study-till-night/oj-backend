@@ -4,6 +4,8 @@
 ## 项目概述
 本项目是一个基于SpringBoot、MyBatis-Plus、SpringCloud、RabbitMq以及Docker技术构建的在线编程题目评测平台，旨在支持创建和提交编程题目。系统提供了强大的管理功能，允许管理员创建和编辑题目标题、描述、样例输入输出及时间和空间限制条件。用户可以提交代码并查看自己和其他用户的提交记录。
 
+**分布式版本**   [https://github.com/study-till-night/oj-backend-cloud](https://github.com/study-till-night/oj-backend-cloud)
+
 ![img.png](images/img.png)
 ![img.png](images/img2.png)
 ## 技术栈
